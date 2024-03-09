@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Vishr\\OneDrive\\Desktop\\B2B\\B2Bsolutions-repo\\BSB-project\\BSB-project\\BSB-project.csproj": {}
+    "C:\\Users\\Vishr\\OneDrive\\Desktop\\FM\\B2Bsolutions-repo\\BSB-project\\BSB-project\\BSB-project.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Vishr\\OneDrive\\Desktop\\B2B\\B2Bsolutions-repo\\BSB-project\\BSB-project\\BSB-project.csproj": {
+    "C:\\Users\\Vishr\\OneDrive\\Desktop\\FM\\B2Bsolutions-repo\\BSB-project\\BSB-project\\BSB-project.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Vishr\\OneDrive\\Desktop\\B2B\\B2Bsolutions-repo\\BSB-project\\BSB-project\\BSB-project.csproj",
+        "projectUniqueName": "C:\\Users\\Vishr\\OneDrive\\Desktop\\FM\\B2Bsolutions-repo\\BSB-project\\BSB-project\\BSB-project.csproj",
         "projectName": "BSB-project",
-        "projectPath": "C:\\Users\\Vishr\\OneDrive\\Desktop\\B2B\\B2Bsolutions-repo\\BSB-project\\BSB-project\\BSB-project.csproj",
+        "projectPath": "C:\\Users\\Vishr\\OneDrive\\Desktop\\FM\\B2Bsolutions-repo\\BSB-project\\BSB-project\\BSB-project.csproj",
         "packagesPath": "C:\\Users\\Vishr\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Vishr\\OneDrive\\Desktop\\B2B\\B2Bsolutions-repo\\BSB-project\\BSB-project\\obj\\",
+        "outputPath": "C:\\Users\\Vishr\\OneDrive\\Desktop\\FM\\B2Bsolutions-repo\\BSB-project\\BSB-project\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Vishr\\AppData\\Roaming\\NuGet\\NuGet.Config",
