@@ -7,11 +7,20 @@ using BSB_project.Model;
 using System.Text.Json;
 using Newtonsoft.Json;
 using Azure.Storage.Blobs;
+using Microsoft.AspNetCore.Mvc.Diagnostics;
+using System.Text;
+using Azure.Messaging.EventHubs.Producer;
+using Azure.Messaging.EventHubs;
+
 
 namespace BSB_project.Business
 {
     public class UserBusiness
     {
+        private const string connectionString = "Endpoint=sb://amdocs-b2b.servicebus.windows.net/;SharedAccessKeyName=amdox-eventhub;SharedAccessKey=VWZ6DMYNQvbRSSuRIghlyg36XzXWdNC72+AEhFaXWGw=;EntityPath=amdox-eventhub";
+        private const string eventHubName = "amdox-eventhub";
+       
+
         public async Task PostJsonfile(IFormFile file)
         {
             // Check if the file is not null and has content
@@ -29,9 +38,12 @@ namespace BSB_project.Business
                     
                     var userList = System.Text.Json.JsonSerializer.Deserialize<List<Initialjsonstruct>>(jsonContent);
                     var result = UploadtoBlob(userList);
-                     
+                    //userlisttoupdate = polling function , it need get db content where issynced is false 
 
+                    
+                    
 
+                    var eventStatus = PostEvent(userList);
                 }
 
             }
@@ -41,8 +53,46 @@ namespace BSB_project.Business
             }
         }
 
-      private   async Task  UploadtoBlob(List<Initialjsonstruct> userList)
+
+        public async Task PostEvent(List<Initialjsonstruct> userList)
         {
+            EventHubProducerClient producerClient = null;
+            List<Azure.Messaging.EventHubs.EventData> eventsToSend = new List<Azure.Messaging.EventHubs.EventData>();
+
+            try
+            {
+                producerClient = new EventHubProducerClient(connectionString, eventHubName);
+
+                foreach (var user in userList)
+                {
+                    // Serialize the user object to JSON (replace with your actual serialization logic)
+                    string jsonUser = JsonConvert.SerializeObject(user);
+
+                    // Convert the JSON string to bytes
+                    byte[] eventDataBytes = Encoding.UTF8.GetBytes(jsonUser);
+
+                    // Create EventData with binary data
+                    Azure.Messaging.EventHubs.EventData eventData = new Azure.Messaging.EventHubs.EventData(eventDataBytes);
+                    eventsToSend.Add(eventData);
+                }
+
+                // Send the collection of events in batches for efficiency
+                await producerClient.SendAsync(eventsToSend.ToArray());
+                await producerClient.DisposeAsync();
+                Console.WriteLine($"Successfully sent {eventsToSend.Count} events to Event Hub.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending events: {ex.Message}");
+                // Log the error for further investigation and potential retries
+            }
+          
+        }
+        private async Task  UploadtoBlob(List<Initialjsonstruct> userList)
+        {
+
+           // DBLIst=get blobinistaildb contents
+          // 
             string jsonData = JsonConvert.SerializeObject(userList);
 
            
