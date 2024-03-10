@@ -19,7 +19,7 @@ namespace BSB_project.Controllers
             this.orchestratorARBusiness = new OrchestratorARBusiness(connectionString);
         }
 
-        [HttpPost("uploadJsonFile")]
+        [HttpPost("uploadUserORToAR")]
         public async Task<IActionResult> UploadFile(IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -27,15 +27,16 @@ namespace BSB_project.Controllers
 
             try
             {
-                string blobName = "orchestratorAR";
+                    string blobName = "orchestratorAR.json";
                 // Read the content of the uploaded file
                 using (var reader = new StreamReader(file.OpenReadStream()))
                 {
                     var content = await reader.ReadToEndAsync();
-                    var jsonData = JsonConvert.DeserializeObject<List<Initialjsonstruct>>(content);
+                    //var jsonData = JsonConvert.DeserializeObject<List<Initialjsonstruct>>(content);
+                    var jsonData= System.Text.Json.JsonSerializer.Deserialize<List<Initialjsonstruct>>(content);
 
-                    // Fetch existing data from blob storage
-                    var existingData = await orchestratorARBusiness.GetExistingDataFromBlobStorageAsync("amdox-container", blobName);
+                        // Fetch existing data from blob storage
+                        var existingData = await orchestratorARBusiness.GetExistingDataFromBlobStorageAsync("amdox-container", blobName);
 
                     // Update existing objects or add new ones
                     foreach (var newDataItem in jsonData)
