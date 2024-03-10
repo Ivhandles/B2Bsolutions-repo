@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\build\BSB-project.props" />
+</Project>
