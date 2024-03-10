@@ -19,7 +19,7 @@ namespace BSB_project.Controllers
             this.orchestratorARBusiness = new OrchestratorARBusiness(connectionString);
         }
 
-        [HttpPost("uploadUserData")]
+        [HttpPost("uploadJsonFile")]
         public async Task<IActionResult> UploadFile(IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -27,19 +27,68 @@ namespace BSB_project.Controllers
 
             try
             {
-                using (var stream = file.OpenReadStream())
+                string blobName = "orchestratorAR";
+                // Read the content of the uploaded file
+                using (var reader = new StreamReader(file.OpenReadStream()))
                 {
-                    var uploadSuccess = await orchestratorARBusiness.UploadUserJsonAsync(stream, "amdox-container", Path.GetFileNameWithoutExtension(file.FileName));
+                    var content = await reader.ReadToEndAsync();
+                    var jsonData = JsonConvert.DeserializeObject<List<Initialjsonstruct>>(content);
+
+                    // Fetch existing data from blob storage
+                    var existingData = await orchestratorARBusiness.GetExistingDataFromBlobStorageAsync("amdox-container", blobName);
+
+                    // Update existing objects or add new ones
+                    foreach (var newDataItem in jsonData)
+                    {
+                        var existingItem = existingData.FirstOrDefault(item => item.UserGuid == newDataItem.UserGuid);
+
+                        if (existingItem != null)
+                        {
+                            // Update existing item with newDataItem values
+                            existingItem.UserGuid = newDataItem.UserGuid;
+                            existingItem.B2BUserld = newDataItem.B2BUserld;
+                            existingItem.FullName = newDataItem.FullName;
+                            existingItem.Type = newDataItem.Type;
+                            existingItem.UttUID = newDataItem.UttUID;
+                            existingItem.FirstName = newDataItem.FirstName;
+                            existingItem.LastName = newDataItem.LastName;
+                            existingItem.B2BAccessCode = newDataItem.B2BAccessCode;
+                            existingItem.Email = newDataItem.Email;
+                            existingItem.SyncDate = newDataItem.SyncDate;
+                            existingItem.UserName = newDataItem.UserName;
+                            existingItem.ModificationBatch = newDataItem.ModificationBatch;
+                            existingItem.ModificationDate = newDataItem.ModificationDate;
+                            existingItem.SyncStatus = newDataItem.SyncStatus;
+                            existingItem.IsSynced = newDataItem.IsSynced;
+                        }
+                        else
+                        {
+                            // Add new item to the existing data
+                            existingData.Add(newDataItem);
+                        }
+                    }
+
+                    // Serialize the updated data
+                    string updatedDataJson = JsonConvert.SerializeObject(existingData);
+
+                    // Upload the updated data to blob storage
+                    bool uploadSuccess = await orchestratorARBusiness.UploadDataToBlobStorageAsync("amdox-container", blobName, updatedDataJson);
+
                     if (uploadSuccess)
                     {
+                        // Display success message
                         Console.WriteLine($"Data successfully stored in Azure Blob Storage.");
-                        return Ok("File uploaded successfully.");
+                        return Ok(existingData);
+
                     }
                     else
                     {
+                        // Display error message
                         Console.WriteLine($"Error: Data could not be stored in Azure Blob Storage.");
                         return StatusCode(500, "Internal Server Error");
+
                     }
+
                 }
             }
             catch (Exception ex)
@@ -75,12 +124,12 @@ namespace BSB_project.Controllers
                                 fileUploadedMessage = "Locations File uploaded successfully.";
                                 break;
                             default:
-                                fileUploadedMessage = "Invalid upload type. Please select Dealers or Locations. "; 
+                                fileUploadedMessage = "Invalid upload type. Please select Dealers or Locations. ";
                                 break;
                         }
                         return Ok(fileUploadedMessage);
-    
-                }
+
+                    }
                     else
                     {
                         Console.WriteLine($"Error: Data could not be stored in Azure Blob Storage.");
@@ -92,6 +141,6 @@ namespace BSB_project.Controllers
             {
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
-       }
+        }
     }
 }
