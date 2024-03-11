@@ -20,33 +20,12 @@ namespace BSB_project.Business
         private const string connectionString = "Endpoint=sb://amdocs-b2b.servicebus.windows.net/;SharedAccessKeyName=amdox-eventhub;SharedAccessKey=VWZ6DMYNQvbRSSuRIghlyg36XzXWdNC72+AEhFaXWGw=;EntityPath=amdox-eventhub";
         private const string eventHubName = "amdox-eventhub";
         private const string blobconnectionString = "DefaultEndpointsProtocol=https;AccountName=amdox;AccountKey=EsOwsWTExYkxhSDuyhUJ1Ls0yCLjKI/ULQo92BGPXs2xgyy0nQsOCqwRdY3g9FKAogOFGYV6xrzH+AStDwsqaw==;EndpointSuffix=core.windows.net";
-
-        public async Task UpdateorInsertBlobData(List<Initialjsonstruct> userList, List<Initialjsonstruct> blobData)
-        {
-            foreach (var user in userList)
-            {
-                var existingUserIndex = blobData.FindIndex(u => u.UserGuid == user.UserGuid);
-
-                if (existingUserIndex != -1)
-                {
-                    // Update existing user in blobData if data is different
-                    if (!AreUsersEqual(user, blobData[existingUserIndex]))
-                    {
-                        // Update user data in blobData
-                        blobData[existingUserIndex] = user;
-                    }
-                }
-                else
-                {
-                    // If user ID is new, append to the blobData
-                    blobData.Add(user);
-                }
-            }
-        }
-
+        private const string blobcontainerName = "amdox-container";
+       private const  string blobName = "initialdb.json";
+        //method to process the postedjsonfile
         public async Task PostJsonfile(IFormFile file)
         {
-            // Check if the file is not null and has content
+            
             if (file == null || file.Length == 0)
             {
                 throw new ArgumentException("File is null or empty.");
@@ -62,11 +41,11 @@ namespace BSB_project.Business
 
                     var blobData = await ReadJsonFromBlobAsync();
 
-                    // Call the method to update blobData
+                   
                     await UpdateorInsertBlobData(userList, blobData);
 
                     var result = UploadtoBlob(blobData);
-                    //polling function
+                   
                     var pollingblobData = await ReadJsonFromBlobAsync();
 
                     List<Initialjsonstruct> unsyncedList = pollingblobData.Where(item => !item.IsSynced).ToList();
@@ -80,7 +59,29 @@ namespace BSB_project.Business
             }
         }
 
-        // Helper method to check if two users are equal
+        //Method to check whether the user is to be updated or added to the blob storage
+        public async Task UpdateorInsertBlobData(List<Initialjsonstruct> userList, List<Initialjsonstruct> blobData)
+        {
+            foreach (var user in userList)
+            {
+                var existingUserIndex = blobData.FindIndex(u => u.UserGuid == user.UserGuid);
+
+                if (existingUserIndex != -1)
+                {
+                    if (!AreUsersEqual(user, blobData[existingUserIndex]))
+                    {
+
+                        blobData[existingUserIndex] = user;
+                    }
+                }
+                else
+                {
+
+                    blobData.Add(user);
+                }
+            }
+        }
+        //method to compare the userlist and the data from the blob
         private bool AreUsersEqual(Initialjsonstruct user1, Initialjsonstruct user2)
         {
             return user1.UserGuid == user2.UserGuid &&
@@ -101,15 +102,16 @@ namespace BSB_project.Business
         }
 
 
+        
+        //method to read the data from blob
         public async Task<List<Initialjsonstruct>> ReadJsonFromBlobAsync()
         {
             try
             {
-                string containerName = "amdox-container";
-                string blobName = "initialdb.json";
+               
 
                 BlobServiceClient blobServiceClient = new BlobServiceClient(blobconnectionString);
-                BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+                BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(blobcontainerName);
                 BlobClient blobClient = containerClient.GetBlobClient(blobName);
 
                 if (await blobClient.ExistsAsync())
@@ -124,8 +126,7 @@ namespace BSB_project.Business
                             var content = await reader.ReadToEndAsync();
                             var fetcheduserList = JsonConvert.DeserializeObject<List<Initialjsonstruct>>(content);
 
-                            // Log the retrieved user list
-                            Console.WriteLine($"Successfully retrieved user list from blob storage. Count: {fetcheduserList.Count}");
+                            
 
                             return fetcheduserList;
                         }
@@ -133,19 +134,17 @@ namespace BSB_project.Business
                 }
                 else
                 {
-                    // Blob doesn't exist, return an empty list or handle as needed
-                    Console.WriteLine($"Blob with name '{blobName}' does not exist in container '{containerName}'. Returning an empty list.");
                     return new List<Initialjsonstruct>();
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error retrieving data from blob storage: {ex.Message}");
-                throw; // Handle or log the exception as needed
+                throw; 
             }
         }
 
-
+        //method to post the unsyncedlist to the event
         public async Task PostEvent(List<Initialjsonstruct> userList)
         {
             EventHubProducerClient producerClient = null;
@@ -157,18 +156,18 @@ namespace BSB_project.Business
 
                 foreach (var user in userList)
                 {
-                    // Serialize the user object to JSON (replace with your actual serialization logic)
+                   
                     string jsonUser = JsonConvert.SerializeObject(user);
 
-                    // Convert the JSON string to bytes
+                   
                     byte[] eventDataBytes = Encoding.UTF8.GetBytes(jsonUser);
 
-                    // Create EventData with binary data
+                    
                     Azure.Messaging.EventHubs.EventData eventData = new Azure.Messaging.EventHubs.EventData(eventDataBytes);
                     eventsToSend.Add(eventData);
                 }
 
-                // Send the collection of events in batches for efficiency
+               
                 await producerClient.SendAsync(eventsToSend.ToArray());
                 await producerClient.DisposeAsync();
                 Console.WriteLine($"Successfully sent {eventsToSend.Count} events to Event Hub.");
@@ -176,15 +175,15 @@ namespace BSB_project.Business
             catch (Exception ex)
             {
                 Console.WriteLine($"Error sending events: {ex.Message}");
-                // Log the error for further investigation and potential retries
+               
             }
 
         }
+
+        //method to upload the data to blob
         private async Task UploadtoBlob(List<Initialjsonstruct> userList)
         {
 
-            // DBLIst=get blobinistaildb contents
-            // 
             string jsonData = JsonConvert.SerializeObject(userList);
 
 
@@ -194,10 +193,10 @@ namespace BSB_project.Business
             BlobServiceClient blobServiceClient = new BlobServiceClient(blobconnectionString);
 
 
-            BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient("amdox-container");
+            BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(blobcontainerName);
 
 
-            string blobName = "initialdb.json";
+          
 
             BlobClient blobClient = containerClient.GetBlobClient(blobName);
 
