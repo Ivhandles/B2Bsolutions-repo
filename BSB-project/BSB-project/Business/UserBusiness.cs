@@ -21,11 +21,10 @@ namespace BSB_project.Business
         private const string eventHubName = "amdox-eventhub";
         private const string blobconnectionString = "DefaultEndpointsProtocol=https;AccountName=amdox;AccountKey=EsOwsWTExYkxhSDuyhUJ1Ls0yCLjKI/ULQo92BGPXs2xgyy0nQsOCqwRdY3g9FKAogOFGYV6xrzH+AStDwsqaw==;EndpointSuffix=core.windows.net";
         private const string blobcontainerName = "amdox-container";
-       private const  string blobName = "initialdb.json";
+        private const string blobName = "initialdb.json";
         //method to process the postedjsonfile
         public async Task PostJsonfile(IFormFile file)
         {
-            
             if (file == null || file.Length == 0)
             {
                 throw new ArgumentException("File is null or empty.");
@@ -41,11 +40,10 @@ namespace BSB_project.Business
 
                     var blobData = await ReadJsonFromBlobAsync();
 
-                   
+
                     await UpdateorInsertBlobData(userList, blobData);
 
                     var result = UploadtoBlob(blobData);
-                   
                     var pollingblobData = await ReadJsonFromBlobAsync();
 
                     List<Initialjsonstruct> unsyncedList = pollingblobData.Where(item => !item.IsSynced).ToList();
@@ -102,13 +100,13 @@ namespace BSB_project.Business
         }
 
 
-        
+
         //method to read the data from blob
         public async Task<List<Initialjsonstruct>> ReadJsonFromBlobAsync()
         {
             try
             {
-               
+
 
                 BlobServiceClient blobServiceClient = new BlobServiceClient(blobconnectionString);
                 BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(blobcontainerName);
@@ -126,7 +124,7 @@ namespace BSB_project.Business
                             var content = await reader.ReadToEndAsync();
                             var fetcheduserList = JsonConvert.DeserializeObject<List<Initialjsonstruct>>(content);
 
-                            
+
 
                             return fetcheduserList;
                         }
@@ -140,7 +138,7 @@ namespace BSB_project.Business
             catch (Exception ex)
             {
                 Console.WriteLine($"Error retrieving data from blob storage: {ex.Message}");
-                throw; 
+                throw;
             }
         }
 
@@ -156,18 +154,17 @@ namespace BSB_project.Business
 
                 foreach (var user in userList)
                 {
-                   
                     string jsonUser = JsonConvert.SerializeObject(user);
 
-                   
+
                     byte[] eventDataBytes = Encoding.UTF8.GetBytes(jsonUser);
 
-                    
+
                     Azure.Messaging.EventHubs.EventData eventData = new Azure.Messaging.EventHubs.EventData(eventDataBytes);
                     eventsToSend.Add(eventData);
                 }
 
-               
+
                 await producerClient.SendAsync(eventsToSend.ToArray());
                 await producerClient.DisposeAsync();
                 Console.WriteLine($"Successfully sent {eventsToSend.Count} events to Event Hub.");
@@ -175,7 +172,6 @@ namespace BSB_project.Business
             catch (Exception ex)
             {
                 Console.WriteLine($"Error sending events: {ex.Message}");
-               
             }
 
         }
@@ -188,15 +184,13 @@ namespace BSB_project.Business
 
 
 
-
-
             BlobServiceClient blobServiceClient = new BlobServiceClient(blobconnectionString);
 
 
             BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(blobcontainerName);
 
 
-          
+
 
             BlobClient blobClient = containerClient.GetBlobClient(blobName);
 
