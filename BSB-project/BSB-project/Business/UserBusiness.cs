@@ -21,6 +21,29 @@ namespace BSB_project.Business
         private const string eventHubName = "amdox-eventhub";
         private const string blobconnectionString = "DefaultEndpointsProtocol=https;AccountName=amdox;AccountKey=EsOwsWTExYkxhSDuyhUJ1Ls0yCLjKI/ULQo92BGPXs2xgyy0nQsOCqwRdY3g9FKAogOFGYV6xrzH+AStDwsqaw==;EndpointSuffix=core.windows.net";
 
+        public async Task UpdateorInsertBlobData(List<Initialjsonstruct> userList, List<Initialjsonstruct> blobData)
+        {
+            foreach (var user in userList)
+            {
+                var existingUserIndex = blobData.FindIndex(u => u.UserGuid == user.UserGuid);
+
+                if (existingUserIndex != -1)
+                {
+                    // Update existing user in blobData if data is different
+                    if (!AreUsersEqual(user, blobData[existingUserIndex]))
+                    {
+                        // Update user data in blobData
+                        blobData[existingUserIndex] = user;
+                    }
+                }
+                else
+                {
+                    // If user ID is new, append to the blobData
+                    blobData.Add(user);
+                }
+            }
+        }
+
         public async Task PostJsonfile(IFormFile file)
         {
             // Check if the file is not null and has content
@@ -39,32 +62,16 @@ namespace BSB_project.Business
 
                     var blobData = await ReadJsonFromBlobAsync();
 
-                    foreach (var user in userList)
-                    {
-                        var existingUserIndex = blobData.FindIndex(u => u.UserGuid == user.UserGuid);
-
-                        if (existingUserIndex != -1)
-                        {
-                            // Update existing user in blobData if data is different
-                            if (!AreUsersEqual(user, blobData[existingUserIndex]))
-                            {
-                                // Update user data in blobData
-                                blobData[existingUserIndex] = user;
-                            }
-                        }
-                        else
-                        {
-                            // If user ID is new, append to the blobData
-                            blobData.Add(user);
-                        }
-                    }
+                    // Call the method to update blobData
+                    await UpdateorInsertBlobData(userList, blobData);
 
                     var result = UploadtoBlob(blobData);
+                    //polling function
+                    var pollingblobData = await ReadJsonFromBlobAsync();
 
+                    List<Initialjsonstruct> unsyncedList = pollingblobData.Where(item => !item.IsSynced).ToList();
 
-                    // Additional processing if needed
-
-                    var eventStatus = PostEvent(userList);
+                    var eventStatus = PostEvent(unsyncedList);
                 }
             }
             catch (Exception ex)
@@ -72,6 +79,7 @@ namespace BSB_project.Business
                 throw new ApplicationException("Error processing JSON file.", ex);
             }
         }
+
         // Helper method to check if two users are equal
         private bool AreUsersEqual(Initialjsonstruct user1, Initialjsonstruct user2)
         {
@@ -92,25 +100,6 @@ namespace BSB_project.Business
                    user1.SyncDate == user2.SyncDate;
         }
 
-        // Helper method to update user properties
-        private void UpdateUser(Initialjsonstruct existingUser, Initialjsonstruct newUser)
-        {
-            existingUser.UserGuid = newUser.UserGuid;
-            existingUser.B2BUserld = newUser.B2BUserld;
-            existingUser.B2BAccessCode = newUser.B2BAccessCode;
-            existingUser.UttUID = newUser.UttUID;
-            existingUser.Type = newUser.Type;
-            existingUser.UserName = newUser.UserName;
-            existingUser.FirstName = newUser.FirstName;
-            existingUser.LastName = newUser.LastName;
-            existingUser.FullName = newUser.FullName;
-            existingUser.Email = newUser.Email;
-            existingUser.IsSynced = newUser.IsSynced;
-            existingUser.SyncStatus = newUser.SyncStatus;
-            existingUser.ModificationDate = newUser.ModificationDate;
-            existingUser.ModificationBatch = newUser.ModificationBatch;
-            existingUser.SyncDate = newUser.SyncDate;
-        }
 
         public async Task<List<Initialjsonstruct>> ReadJsonFromBlobAsync()
         {
