@@ -20,23 +20,20 @@ namespace BSB_project.Controllers
         }
 
         [HttpPost("uploadUserORToAR")]
-        public async Task<IActionResult> UploadFile(IFormFile file)
+        public async Task<IActionResult> UploadJsonData([FromBody] List<Initialjsonstruct> jsonData)
         {
-            if (file == null || file.Length == 0)
-                return BadRequest("No file uploaded.");
+            if (jsonData == null || jsonData.Count == 0)
+                return BadRequest("No JSON data uploaded.");
 
             try
             {
-                    string blobName = "orchestratorAR.json";
+                string blobName = "orchestratorAR.json";
                 // Read the content of the uploaded file
-                using (var reader = new StreamReader(file.OpenReadStream()))
-                {
-                    var content = await reader.ReadToEndAsync();
-                    //var jsonData = JsonConvert.DeserializeObject<List<Initialjsonstruct>>(content);
-                    var jsonData= System.Text.Json.JsonSerializer.Deserialize<List<Initialjsonstruct>>(content);
+                //var jsonData = JsonConvert.DeserializeObject<List<Initialjsonstruct>>(jsonString);
 
-                        // Fetch existing data from blob storage
-                        var existingData = await orchestratorARBusiness.GetExistingDataFromBlobStorageAsync("amdox-container", blobName);
+                // Fetch existing data from blob storage
+                var existingData = await orchestratorARBusiness.GetExistingDataFromBlobStorageAsync("amdox-container", blobName);
+
 
                     // Update existing objects or add new ones
                     foreach (var newDataItem in jsonData)
@@ -60,7 +57,7 @@ namespace BSB_project.Controllers
                             existingItem.ModificationBatch = newDataItem.ModificationBatch;
                             existingItem.ModificationDate = newDataItem.ModificationDate;
                             existingItem.SyncStatus = newDataItem.SyncStatus;
-                            existingItem.IsSynced = newDataItem.IsSynced;
+                            existingItem.IsSynced = true;
                         }
                         else
                         {
@@ -68,9 +65,17 @@ namespace BSB_project.Controllers
                             existingData.Add(newDataItem);
                         }
                     }
+                Dictionary<Guid, string> userStatusList = new Dictionary<Guid, string>();
 
-                    // Serialize the updated data
-                    string updatedDataJson = JsonConvert.SerializeObject(existingData);
+                // Add some sample data
+                userStatusList.Add(Guid.NewGuid(), "Updated");
+                userStatusList.Add(Guid.NewGuid(), "Not updated");
+                userStatusList.Add(Guid.NewGuid(), "Updated");
+                userStatusList.Add(Guid.NewGuid(), "Updated");
+                userStatusList.Add(Guid.NewGuid(), "Updated");
+
+                // Serialize the updated data
+                string updatedDataJson = JsonConvert.SerializeObject(existingData);
 
                     // Upload the updated data to blob storage
                     bool uploadSuccess = await orchestratorARBusiness.UploadDataToBlobStorageAsync("amdox-container", blobName, updatedDataJson);
@@ -79,7 +84,7 @@ namespace BSB_project.Controllers
                     {
                         // Display success message
                         Console.WriteLine($"Data successfully stored in Azure Blob Storage.");
-                        return Ok(existingData);
+                        return Ok(userStatusList);
 
                     }
                     else
@@ -90,7 +95,6 @@ namespace BSB_project.Controllers
 
                     }
 
-                }
             }
             catch (Exception ex)
             {
@@ -101,7 +105,7 @@ namespace BSB_project.Controllers
         [HttpPost("uploadDealersorLocationData")]
         public async Task<IActionResult> UploadFileForDealersOrLocations(IFormFile file, string uploadType)
         {
-            if (file == null || file.Length == 0)
+            if (file == null || file.Length == 0)   
                 return BadRequest("No file uploaded.");
 
             if (string.IsNullOrEmpty(uploadType) || (uploadType != "Dealers" && uploadType != "Locations"))
@@ -136,6 +140,51 @@ namespace BSB_project.Controllers
                         Console.WriteLine($"Error: Data could not be stored in Azure Blob Storage.");
                         return StatusCode(500, "Internal Server Error");
                     }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+
+
+        [HttpPost("uploadDealersorLocationDataa")]
+        public async Task<IActionResult> UploadFile([FromQuery] string dataType, IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded.");
+
+            if (dataType != "Dealers" && dataType != "Locations")
+                return BadRequest("Invalid dataType. Supported values are 'Dealers' or 'Locations'.");
+
+            try
+            {
+                string originalFileName = Path.GetFileNameWithoutExtension(file.FileName);
+                string blobName = $"{originalFileName}";
+                // Read the content of the uploaded file
+                using (var reader = new StreamReader(file.OpenReadStream()))
+                {
+                    var content = await reader.ReadToEndAsync();
+                    var jsonData = JsonConvert.DeserializeObject<List<Initialjsonstruct>>(content);
+
+                    UserDataList.UserData = jsonData;
+                    string userListJson = JsonConvert.SerializeObject(UserDataList.UserData);
+                    bool uploadSuccess = await orchestratorARBusiness.UploadDataToBlobStorageAsync("container", blobName, userListJson);
+
+                    if (uploadSuccess)
+                    {
+                        // Display success message
+                        Console.WriteLine($"Data successfully stored in Azure Blob Storage.");
+                    }
+                    else
+                    {
+                        // Display error message
+                        Console.WriteLine($"Error: Data could not be stored in Azure Blob Storage.");
+                    }
+                    // Return the stored User data
+                    return Ok(UserDataList.UserData);
                 }
             }
             catch (Exception ex)
