@@ -50,7 +50,7 @@ namespace BSB_project.Controllers
                         existingItem.ModificationDate = newDataItem.ModificationDate;
                         existingItem.SyncStatus = newDataItem.SyncStatus;
                         existingItem.IsSynced = true;
-                        Console.WriteLine($"Object with UserGuid {newDataItem.UserGuid} updated.");
+    
 
                     string updatedDataJson = JsonConvert.SerializeObject(existingData);
 
@@ -60,16 +60,17 @@ namespace BSB_project.Controllers
                     if (!uploadSuccess)
                     {
                         // Display error message
-                        Console.WriteLine($"Error: Data could not be stored in Azure Blob Storage.");
+                        Console.WriteLine($"Error: Data could not be Updated to AR db.");
                         var responseError = new Dictionary<string, string>
                         {
-                            {$"{newDataItem.UserGuid}", "updated" }
+                            {$"{newDataItem.UserGuid}", "Failed" }
                         };
                         return StatusCode(500, responseError);
                     }
+                    Console.WriteLine($"Object with UserGuid {newDataItem.UserGuid} updated In AR database");
                     var response = new Dictionary<string, string>
                         {
-                            {$"{newDataItem.UserGuid}", "updated" }
+                            {$"{newDataItem.UserGuid}", "Success" }
                         };
                     return Ok(response);
                    
@@ -80,7 +81,7 @@ namespace BSB_project.Controllers
                     newDataItem.IsSynced = true;
                     existingData.Add(newDataItem);
 
-                    Console.WriteLine($"New object with UserGuid {newDataItem.UserGuid} added.");
+                    Console.WriteLine($"New object with UserGuid {newDataItem.UserGuid} added to AR db.");
                     // Serialize the updated data
                     string updatedDataJson = JsonConvert.SerializeObject(existingData);
 
@@ -93,16 +94,16 @@ namespace BSB_project.Controllers
 
                         var responseError = new Dictionary<string, string>
                         {
-                            {$"{newDataItem.UserGuid}", "updated" }
+                            {$"{newDataItem.UserGuid}", "Failed" }
                         };
                         return StatusCode(500, responseError);
                         // Display error message
 
                     }
-
+                    Console.WriteLine($"Object with UserGuid {newDataItem.UserGuid} updated In AR database");
                     var response = new Dictionary<string, string>
                         {
-                            {$"{newDataItem.UserGuid}", "updated" }
+                            {$"{newDataItem.UserGuid}", "Success" }
                         };
                     return Ok(response);
                 
