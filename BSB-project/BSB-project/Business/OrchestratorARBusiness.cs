@@ -27,7 +27,7 @@ namespace BSB_project.Business
                 BlobClient blobClient = containerClient.GetBlobClient(blobName);
 
                 await blobClient.UploadAsync(dataStream, true);
-                Console.WriteLine($"Data uploaded successfully to blob storage.");
+               
                 return true;
             }
             catch (Exception ex)
@@ -57,9 +57,7 @@ namespace BSB_project.Business
                             var content = await reader.ReadToEndAsync();
                             var userList = JsonConvert.DeserializeObject<List<Initialjsonstruct>>(content);
 
-                            // Log the retrieved user list
-                            Console.WriteLine($"Successfully retrieved user list from blob storage. Count: {userList.Count}");
-
+                       
                             return userList;
                         }
                     }

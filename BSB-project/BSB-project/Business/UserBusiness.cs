@@ -80,7 +80,7 @@ namespace BSB_project.Business
             }
         }
         //method to compare the userlist and the data from the blob
-        private bool AreUsersEqual(Initialjsonstruct user1, Initialjsonstruct user2)
+        public bool AreUsersEqual(Initialjsonstruct user1, Initialjsonstruct user2)
         {
             return user1.UserGuid == user2.UserGuid &&
                    user1.B2BUserld == user2.B2BUserld &&
