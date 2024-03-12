@@ -61,11 +61,18 @@ namespace BSB_project.Controllers
                     {
                         // Display error message
                         Console.WriteLine($"Error: Data could not be stored in Azure Blob Storage.");
-                        return StatusCode(500, "Internal Server Error");
+                        var responseError = new Dictionary<string, string>
+                        {
+                            {$"{newDataItem.UserGuid}", "updated" }
+                        };
+                        return StatusCode(500, responseError);
                     }
-
-                    // Return a response indicating that the UserGuid was updated
-                    return Ok($"Object with UserGuid '{newDataItem.UserGuid}' updated successfully.");
+                    var response = new Dictionary<string, string>
+                        {
+                            {$"{newDataItem.UserGuid}", "updated" }
+                        };
+                    return Ok(response);
+                   
                 }
                 else
                 {
@@ -82,13 +89,23 @@ namespace BSB_project.Controllers
 
                     if (!uploadSuccess)
                     {
-                        // Display error message
                         Console.WriteLine($"Error: Data could not be stored in Azure Blob Storage.");
-                        return StatusCode(500, "Internal Server Error");
+
+                        var responseError = new Dictionary<string, string>
+                        {
+                            {$"{newDataItem.UserGuid}", "updated" }
+                        };
+                        return StatusCode(500, responseError);
+                        // Display error message
+
                     }
 
-                    // Return a response indicating that the UserGuid was created
-                    return Ok($"New object with UserGuid '{newDataItem.UserGuid}' created successfully.");
+                    var response = new Dictionary<string, string>
+                        {
+                            {$"{newDataItem.UserGuid}", "updated" }
+                        };
+                    return Ok(response);
+                
                 }
             }
             catch (Exception ex)
