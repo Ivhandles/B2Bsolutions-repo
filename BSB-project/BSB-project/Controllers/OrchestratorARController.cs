@@ -20,81 +20,76 @@ namespace BSB_project.Controllers
         }
 
         [HttpPost("uploadUserORToAR")]
-        public async Task<IActionResult> UploadJsonData([FromBody] List<Initialjsonstruct> jsonData)
+        public async Task<IActionResult> UploadJsonData([FromBody] Initialjsonstruct newDataItem)
         {
-            if (jsonData == null || jsonData.Count == 0)
+            if (newDataItem == null)
                 return BadRequest("No JSON data uploaded.");
 
             try
             {
                 string blobName = "orchestratorAR.json";
-                // Read the content of the uploaded file
-                //var jsonData = JsonConvert.DeserializeObject<List<Initialjsonstruct>>(jsonString);
-
-                // Fetch existing data from blob storage
                 var existingData = await orchestratorARBusiness.GetExistingDataFromBlobStorageAsync("amdox-container", blobName);
+          
+                  var existingItem = existingData.FirstOrDefault(item => item.UserGuid == newDataItem.UserGuid);
 
-
-                    // Update existing objects or add new ones
-                    foreach (var newDataItem in jsonData)
+                    if (existingItem != null)
                     {
-                        var existingItem = existingData.FirstOrDefault(item => item.UserGuid == newDataItem.UserGuid);
+                        // Update existing item with newDataItem values
+                        existingItem.UserGuid = newDataItem.UserGuid;
+                        existingItem.B2BUserld = newDataItem.B2BUserld;
+                        existingItem.FullName = newDataItem.FullName;
+                        existingItem.Type = newDataItem.Type;
+                        existingItem.UttUID = newDataItem.UttUID;
+                        existingItem.FirstName = newDataItem.FirstName;
+                        existingItem.LastName = newDataItem.LastName;
+                        existingItem.B2BAccessCode = newDataItem.B2BAccessCode;
+                        existingItem.Email = newDataItem.Email;
+                        existingItem.SyncDate = newDataItem.SyncDate;
+                        existingItem.UserName = newDataItem.UserName;
+                        existingItem.ModificationBatch = newDataItem.ModificationBatch;
+                        existingItem.ModificationDate = newDataItem.ModificationDate;
+                        existingItem.SyncStatus = newDataItem.SyncStatus;
+                        existingItem.IsSynced = true;
+                        Console.WriteLine($"Object with UserGuid {newDataItem.UserGuid} updated.");
 
-                        if (existingItem != null)
-                        {
-                            // Update existing item with newDataItem values
-                            existingItem.UserGuid = newDataItem.UserGuid;
-                            existingItem.B2BUserld = newDataItem.B2BUserld;
-                            existingItem.FullName = newDataItem.FullName;
-                            existingItem.Type = newDataItem.Type;
-                            existingItem.UttUID = newDataItem.UttUID;
-                            existingItem.FirstName = newDataItem.FirstName;
-                            existingItem.LastName = newDataItem.LastName;
-                            existingItem.B2BAccessCode = newDataItem.B2BAccessCode;
-                            existingItem.Email = newDataItem.Email;
-                            existingItem.SyncDate = newDataItem.SyncDate;
-                            existingItem.UserName = newDataItem.UserName;
-                            existingItem.ModificationBatch = newDataItem.ModificationBatch;
-                            existingItem.ModificationDate = newDataItem.ModificationDate;
-                            existingItem.SyncStatus = newDataItem.SyncStatus;
-                            existingItem.IsSynced = true;
-                        }
-                        else
-                        {
-                            // Add new item to the existing data
-                            existingData.Add(newDataItem);
-                        }
-                    }
-                Dictionary<Guid, string> userStatusList = new Dictionary<Guid, string>();
+                    string updatedDataJson = JsonConvert.SerializeObject(existingData);
 
-                // Add some sample data
-                userStatusList.Add(Guid.NewGuid(), "Updated");
-                userStatusList.Add(Guid.NewGuid(), "Not updated");
-                userStatusList.Add(Guid.NewGuid(), "Updated");
-                userStatusList.Add(Guid.NewGuid(), "Updated");
-                userStatusList.Add(Guid.NewGuid(), "Updated");
-
-                // Serialize the updated data
-                string updatedDataJson = JsonConvert.SerializeObject(existingData);
-
-                    // Upload the updated data to blob storage
+                    // Upload the updated data to blob storage for the current object
                     bool uploadSuccess = await orchestratorARBusiness.UploadDataToBlobStorageAsync("amdox-container", blobName, updatedDataJson);
 
-                    if (uploadSuccess)
-                    {
-                        // Display success message
-                        Console.WriteLine($"Data successfully stored in Azure Blob Storage.");
-                        return Ok(userStatusList);
-
-                    }
-                    else
+                    if (!uploadSuccess)
                     {
                         // Display error message
                         Console.WriteLine($"Error: Data could not be stored in Azure Blob Storage.");
                         return StatusCode(500, "Internal Server Error");
-
                     }
 
+                    // Return a response indicating that the UserGuid was updated
+                    return Ok($"Object with UserGuid '{newDataItem.UserGuid}' updated successfully.");
+                }
+                else
+                {
+                    // Add new item to the existing data
+                    newDataItem.IsSynced = true;
+                    existingData.Add(newDataItem);
+
+                    Console.WriteLine($"New object with UserGuid {newDataItem.UserGuid} added.");
+                    // Serialize the updated data
+                    string updatedDataJson = JsonConvert.SerializeObject(existingData);
+
+                    // Upload the updated data to blob storage for the current object
+                    bool uploadSuccess = await orchestratorARBusiness.UploadDataToBlobStorageAsync("amdox-container", blobName, updatedDataJson);
+
+                    if (!uploadSuccess)
+                    {
+                        // Display error message
+                        Console.WriteLine($"Error: Data could not be stored in Azure Blob Storage.");
+                        return StatusCode(500, "Internal Server Error");
+                    }
+
+                    // Return a response indicating that the UserGuid was created
+                    return Ok($"New object with UserGuid '{newDataItem.UserGuid}' created successfully.");
+                }
             }
             catch (Exception ex)
             {
