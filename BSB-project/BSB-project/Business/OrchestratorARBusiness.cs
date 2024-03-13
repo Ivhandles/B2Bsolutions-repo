@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using Azure;
 using Azure.Storage.Blobs;
 using BSB_project.Model;
 using Microsoft.AspNetCore.Http;
@@ -18,31 +19,13 @@ namespace BSB_project.Business
         {
             this.connectionString = connectionString;
         }
-        public async Task<bool> UploadUserJsonAsync(Stream dataStream, string containerName, string blobName)
+       
+        public async Task<List<Initialjsonstruct>> GetExistingDataFromBlobStorageAsync(string blobContainerName, string blobName)
         {
             try
             {
                 BlobServiceClient blobServiceClient = new BlobServiceClient(connectionString);
-                BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
-                BlobClient blobClient = containerClient.GetBlobClient(blobName);
-
-                await blobClient.UploadAsync(dataStream, true);
-               
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error uploading data to blob storage: {ex.Message}");
-                return false;
-            }
-        }
-
-        public async Task<List<Initialjsonstruct>> GetExistingDataFromBlobStorageAsync(string containerName, string blobName)
-        {
-            try
-            {
-                BlobServiceClient blobServiceClient = new BlobServiceClient(connectionString);
-                BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+                BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(blobContainerName);
                 BlobClient blobClient = containerClient.GetBlobClient(blobName);
 
                 if (await blobClient.ExistsAsync())
@@ -57,7 +40,7 @@ namespace BSB_project.Business
                             var content = await reader.ReadToEndAsync();
                             var userList = JsonConvert.DeserializeObject<List<Initialjsonstruct>>(content);
 
-                       
+
                             return userList;
                         }
                     }
@@ -65,14 +48,34 @@ namespace BSB_project.Business
                 else
                 {
                     // Blob doesn't exist, return an empty list or handle as needed
-                    Console.WriteLine($"Blob with name '{blobName}' does not exist in container '{containerName}'. Returning an empty list.");
+                    Console.WriteLine($"Blob with name '{blobName}' does not exist in container '{blobContainerName}'. Returning an empty list.");
+                    if (!await containerClient.ExistsAsync())
+                    {
+                        await containerClient.CreateIfNotExistsAsync();
+                        Console.WriteLine($"Container '{blobContainerName}' created successfully.");
+                    }
+
+                    // Create the blob
+                    await blobClient.UploadAsync(new MemoryStream(), true);
+                    Console.WriteLine($"Blob '{blobName}' created successfully in container '{blobContainerName}'.");
+
                     return new List<Initialjsonstruct>();
                 }
             }
+            catch (RequestFailedException requestEx)
+            {
+                Console.WriteLine($"Azure Storage request failed: {requestEx.Message}");
+                throw;
+            }
+            catch (JsonException jsonEx)
+            {
+                Console.WriteLine($"Error deserializing JSON: {jsonEx.Message}");
+                throw;
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error retrieving data from blob storage: {ex.Message}");
-                throw; // Handle or log the exception as needed
+                Console.WriteLine($"Unexpected error: {ex.Message}");
+                throw;
             }
         }
 
@@ -102,25 +105,6 @@ namespace BSB_project.Business
                 return false;
             }
         }
-        public async Task<bool> UploadFileForDealersOrLocations(Stream dataStream, string containerName, string blobName)
-        {
-            try
-            {
-                BlobServiceClient blobServiceClient = new BlobServiceClient(connectionString);
-                BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
-                BlobClient blobClient = containerClient.GetBlobClient(blobName);
-
-                await blobClient.UploadAsync(dataStream, true);
-                Console.WriteLine($"Data uploaded successfully to blob storage.");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error uploading data to blob storage: {ex.Message}");
-                return false;
-            }
-        }
+    
     }
 }
-
-

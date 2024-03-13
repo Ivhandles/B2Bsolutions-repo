@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Text;
 using System.Text.Json;
 using Newtonsoft.Json;
+using Microsoft.WindowsAzure.Storage;
 
 namespace BSB_project.Controllers
 {
@@ -11,14 +12,12 @@ namespace BSB_project.Controllers
     {
 
         private readonly OrchestratorARBusiness orchestratorARBusiness;
-
         public OrchestratorARController()
         {
 
             string connectionString = "DefaultEndpointsProtocol=https;AccountName=amdox;AccountKey=EsOwsWTExYkxhSDuyhUJ1Ls0yCLjKI/ULQo92BGPXs2xgyy0nQsOCqwRdY3g9FKAogOFGYV6xrzH+AStDwsqaw==;EndpointSuffix=core.windows.net";
             this.orchestratorARBusiness = new OrchestratorARBusiness(connectionString);
         }
-
         [HttpPost("uploadUserORToAR")]
         public async Task<IActionResult> UploadJsonData([FromBody] Initialjsonstruct newDataItem)
         {
@@ -44,12 +43,12 @@ namespace BSB_project.Controllers
                         {
                             { $"{newDataItem.UserGuid}", "Failed" }
                         };
-              
+
                     return StatusCode(500, responseError);
                 }
                 else
                 {
-                    
+
                     var response = new Dictionary<string, string>
                     {
                         { $"{newDataItem.UserGuid}", "Success" }
@@ -58,13 +57,22 @@ namespace BSB_project.Controllers
                     Console.WriteLine("Api ended");
                     return Ok(response);
                 }
-
+            }
+            catch (JsonSerializationException jsonEx)
+            {
+                Console.WriteLine($"JSON serialization error: {jsonEx.Message}");
+                return StatusCode(500, $"Error serializing data: {jsonEx.Message}");
+            }
+            catch (StorageException storageEx)
+            {
+                Console.WriteLine($"Blob storage error: {storageEx.Message}");
+                return StatusCode(500, $"Error accessing blob storage: {storageEx.Message}");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Internal server error: {ex.Message}");
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
-           
         }
 
 
@@ -89,123 +97,32 @@ namespace BSB_project.Controllers
 
         public async Task UpdateorInsertBlobData(Initialjsonstruct user, List<Initialjsonstruct> blobData)
         {
-          
-            
-                var existingUserIndex = blobData.FindIndex(u => u.UserGuid == user.UserGuid);
+
+
+            var existingUserIndex = blobData.FindIndex(u => u.UserGuid == user.UserGuid);
             var existingIsSyncedIndex = blobData.FindIndex(u => u.IsSynced == user.IsSynced);
 
             if (existingUserIndex != -1)
+            {
+                if (!AreUsersEqual(user, blobData[existingUserIndex]))
                 {
-                    if (!AreUsersEqual(user, blobData[existingUserIndex]))
-                    {
 
-                        blobData[existingUserIndex] = user;
+                    blobData[existingUserIndex] = user;
                     blobData[existingIsSyncedIndex].IsSynced = true;
 
                 }
             }
-                else
-                {
-              
+            else
+            {
+
                 blobData.Add(user);
                 var existingIsSyncedIndexnew = blobData.FindIndex(u => u.IsSynced == user.IsSynced);
                 blobData[existingIsSyncedIndexnew].IsSynced = true;
 
 
             }
-            
+
         }
 
-
-        [HttpPost("uploadDealersorLocationData")]
-        public async Task<IActionResult> UploadFileForDealersOrLocations(IFormFile file, string uploadType)
-        {
-            if (file == null || file.Length == 0)   
-                return BadRequest("No file uploaded.");
-
-            if (string.IsNullOrEmpty(uploadType) || (uploadType != "Dealers" && uploadType != "Locations"))
-                return BadRequest("Invalid upload type. Please select Dealers or Locations.");
-
-            try
-            {
-                using (var stream = file.OpenReadStream())
-                {
-                    var uploadSuccess = await orchestratorARBusiness.UploadUserJsonAsync(stream, "amdox-container", Path.GetFileNameWithoutExtension(file.FileName));
-                    if (uploadSuccess)
-                    {
-                        Console.WriteLine($"Data successfully stored in Azure Blob Storage. AR database");
-                        string fileUploadedMessage;
-                        switch (uploadType)
-                        {
-                            case "Dealers":
-                                fileUploadedMessage = "Dealers File uploaded successfully.";
-                                break;
-                            case "Locations":
-                                fileUploadedMessage = "Locations File uploaded successfully.";
-                                break;
-                            default:
-                                fileUploadedMessage = "Invalid upload type. Please select Dealers or Locations. ";
-                                break;
-                        }
-                        return Ok(fileUploadedMessage);
-
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Error: Data could not be stored in Azure Blob Storage.");
-                        return StatusCode(500, "Internal Server Error");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
-        }
-
-
-
-        [HttpPost("uploadDealersorLocationDataa")]
-        public async Task<IActionResult> UploadFile([FromQuery] string dataType, IFormFile file)
-        {
-            if (file == null || file.Length == 0)
-                return BadRequest("No file uploaded.");
-
-            if (dataType != "Dealers" && dataType != "Locations")
-                return BadRequest("Invalid dataType. Supported values are 'Dealers' or 'Locations'.");
-
-            try
-            {
-                string originalFileName = Path.GetFileNameWithoutExtension(file.FileName);
-                string blobName = $"{originalFileName}";
-                // Read the content of the uploaded file
-                using (var reader = new StreamReader(file.OpenReadStream()))
-                {
-                    var content = await reader.ReadToEndAsync();
-                    var jsonData = JsonConvert.DeserializeObject<List<Initialjsonstruct>>(content);
-
-                    UserDataList.UserData = jsonData;
-                    string userListJson = JsonConvert.SerializeObject(UserDataList.UserData);
-                    bool uploadSuccess = await orchestratorARBusiness.UploadDataToBlobStorageAsync("container", blobName, userListJson);
-
-                    if (uploadSuccess)
-                    {
-                        // Display success message
-                        Console.WriteLine($"Data successfully stored in Azure Blob Storage.AR db");
-                    }
-                    else
-                    {
-                        // Display error message
-                        Console.WriteLine($"Error: Data could not be stored in Azure Blob Storage.");
-                    }
-                    // Return the stored User data
-                    return Ok(UserDataList.UserData);
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
-        }
     }
 }
